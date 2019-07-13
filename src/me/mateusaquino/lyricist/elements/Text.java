@@ -101,6 +101,11 @@ public class Text implements Element {
 	}
 	
 	@Override
+	public void setEffects(Effect... effects) {
+		this.effects = effects;
+	}
+	
+	@Override
 	public BufferedImage getRender(int screenWidth, int screenHeight, int start, int current, int end) {
 		return render;
 	}

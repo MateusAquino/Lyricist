@@ -71,7 +71,7 @@ public final class Sequence {
 		for (int i = 1; i <= times; i++)
 			for (Track.TimedElement element : copy)
 				sequence.add(Track.build(element.start()+timespan*i, element.end()+timespan*i, element.element()));
-		
+		time+=timespan;
 		return this;
 	}
 	

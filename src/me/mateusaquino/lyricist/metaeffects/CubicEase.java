@@ -22,23 +22,35 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.*/
 
-package me.mateusaquino.lyricist.elements;
+package me.mateusaquino.lyricist.metaeffects;
 
-import java.awt.image.BufferedImage;
-
-import me.mateusaquino.lyricist.Position;
 import me.mateusaquino.lyricist.effects.Effect;
 
 /**
- * Element skeleton
- * <br> You can see examples on the package: me.mateusakino.lyricist.elements
+ * Cubic Ease using Cubic-Bezier
  * 
  * @author Mateus de Aquino Batista
- * @category Main Elements
+ * @category Ease
  */
-public interface Element {
-	Position getPosition();
-	Effect[] getEffects();
-	void setEffects(Effect... effects);
-	BufferedImage getRender(int screenWidth, int screenHeight, int start, int current, int end);
+public final class CubicEase extends Ease {
+
+	public CubicEase(Effect... effects) {
+		super(effects);
+	}
+	
+	@Override
+	public CubicBezier in() {
+		return cubicBezier(0.55, 0.055, 0.675, 0.19);
+	}
+
+	@Override
+	public CubicBezier out() {
+		return cubicBezier(0.215, 0.61, 0.355, 1);
+	}
+
+	@Override
+	public CubicBezier both() {
+		return cubicBezier(0.645, 0.045, 0.355, 1);
+	}
+
 }

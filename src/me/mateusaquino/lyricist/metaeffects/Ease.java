@@ -37,17 +37,19 @@ import me.mateusaquino.lyricist.effects.Effect;
  */
 public strictfp abstract class Ease extends MetaEffect implements Cloneable {
 	public final Ease IN, OUT, BOTH;
-	private boolean in = false, out = false;
+	protected boolean in = false, out = false;
 	
 	public Ease(Effect... effects){
 		this.effects = effects;
 		try {
-			IN = (Ease) this.clone();
-			IN.in = true;
-			OUT = (Ease) this.clone();
-			OUT.out = true;
+			IN   = (Ease) this.clone();
+			IN.in    = true;
+			IN.out   = false;
+			OUT  = (Ease) this.clone();
+			OUT.in   = false;
+			OUT.out  = true;
 			BOTH = (Ease) this.clone();
-			BOTH.in = true;
+			BOTH.in  = true;
 			BOTH.out = true;
 		} catch (CloneNotSupportedException e) {
 			throw new RuntimeException("Uh... basically unreachable code :d");

@@ -29,6 +29,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
@@ -104,7 +105,7 @@ public final class ImageUtils {
 	
 	/** Replaces all transparent pixels with new color<br>
 	 *  If invert is specified, replaces all <b>non</b>-transparent pixels with new color*/
-	private static BufferedImage alpha2Color(BufferedImage img, boolean invert, Color newColor) {
+	public static BufferedImage alpha2Color(BufferedImage img, boolean invert, Color newColor) {
 		return filter(img, (r,g,b,a) -> {
 			if((a == 0 && !invert) || (a != 0 && invert)){
 	            r = newColor.getRed();
@@ -120,14 +121,22 @@ public final class ImageUtils {
 	}
 
 	public static BufferedImage concat(BufferedImage img1, BufferedImage img2){
+		return concat(img1, img2, 0, 0);
+	}
+	
+	public static BufferedImage concat(BufferedImage img1, BufferedImage img2, int x, int y){
 		int w = Math.max(img1.getWidth(), img2.getWidth());
 		int h = Math.max(img1.getHeight(), img2.getHeight());
 		BufferedImage img = blank(w, h);
 		Graphics g = img.getGraphics();
 		g.drawImage(img1, 0, 0, null);
-		g.drawImage(img2, 0, 0, null);
+		g.drawImage(img2, x, y, null);
 		g.dispose();
 		return img;
+	}
+	
+	public static BufferedImage makeCopy(BufferedImage img){
+		return concat(img, blank(img.getWidth(), img.getHeight()));
 	}
 	
 	// #-----#--#--#-----# EFFECTS #-----#--#--#-----# //
@@ -205,6 +214,48 @@ public final class ImageUtils {
 	    return newImg; 
 	}
 	
+	public static BufferedImage resize(BufferedImage img, int newW, int newH) { 
+	    Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
+	    BufferedImage dimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
+	    Graphics2D g2d = dimg.createGraphics();
+	    g2d.drawImage(tmp, 0, 0, null);
+	    g2d.dispose();
+	    return dimg;
+	}  
+	
+	public static BufferedImage reposition(BufferedImage img, int newX, int newY) { 
+	    BufferedImage dimg = new BufferedImage(img.getWidth()+2*newX, img.getHeight()+2*newY, BufferedImage.TYPE_INT_ARGB);
+	    Graphics2D g2d = dimg.createGraphics();
+	    g2d.drawImage(img, newX, newY, null);
+	    g2d.dispose();
+	    return dimg;
+	}
+	
+	public static BufferedImage resizepos(BufferedImage img, int newX, int newY, int newW, int newH){
+		Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
+		BufferedImage dimg = new BufferedImage(newW+2*newX, newH+2*newY, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2d = dimg.createGraphics();
+		g2d.drawImage(tmp, newX, newY, null);
+		g2d.dispose();
+		return dimg;
+	}
+	
+	public static BufferedImage subtract(BufferedImage img1, BufferedImage img2) {
+		int[][] alpha = new int[img2.getWidth()][img2.getHeight()];
+		ImageUtils.filter(img2, (x, y, r, g, b, a) -> {alpha[x][y] = a;});
+		return filter(img1, (x, y, r, g, b, a) -> {
+			Color cor = Color.BLACK;
+			try {
+				int alfasub = a - alpha[x][y];
+				alfasub = (alfasub<0) ? 0 : alfasub;
+				cor = new Color(r,g,b,alfasub);
+			} catch(Exception e){
+				cor = new Color(r,g,b,a);
+			}
+			return cor;
+		});
+	}
+	
 	// #-----#--#--#-----# CALCULATIONS #-----#--#--#-----# //
 	
 	/** Calculates X value of Position **/
@@ -256,13 +307,20 @@ public final class ImageUtils {
 
 	// #-----#--#--#-----# FILTERS #-----#--#--#-----# //
 	
-	@FunctionalInterface public interface PixelRGB  { void accept(int r, int g, int b); }
-	@FunctionalInterface public interface PixelRGBA { void accept(int r, int g, int b, int a); }
-	@FunctionalInterface public interface Pixel     { void accept(int x, int y, int r, int g, int b, int a); }
+	/** Accepts (R, G, B) | no return = no change in color **/
+	@FunctionalInterface public interface PixelRGB        { void accept(int r, int g, int b); }
+	/** Accepts (R, G, B, A) | no return = no change in color **/
+	@FunctionalInterface public interface PixelRGBA       { void accept(int r, int g, int b, int a); }
+	/** Accepts (X, Y, R, G, B, A) | no return = no change in color **/
+	@FunctionalInterface public interface Pixel           { void accept(int x, int y, int r, int g, int b, int a); }
+	/** Accepts (R, G, B) | return = change in color **/
 	@FunctionalInterface public interface PixelFilterRGB  { Color accept(int r, int g, int b); }
+	/** Accepts (R, G, B, A) | return = change in color **/
 	@FunctionalInterface public interface PixelFilterRGBA { Color accept(int r, int g, int b, int a); }
+	/** Accepts (X, Y, R, G, B, A) | return = change in color **/
 	@FunctionalInterface public interface PixelFilter     { Color accept(int x, int y, int r, int g, int b, int a); }
 	
+	/** Accepts (X, Y, R, G, B, A) | return = change in color **/
 	public static BufferedImage filter(BufferedImage img, PixelFilter filter){
 		WritableRaster raster = img.getRaster();
 		ColorModel colorModel = img.getColorModel();
@@ -276,12 +334,8 @@ public final class ImageUtils {
         for (int y = 0; y < img.getHeight(); y++, yoff+=img.getWidth()) {
             off = yoff;
             for (int x = 0; x < img.getWidth(); x++) {
-            	int rgb = colorModel.getRGB(raster.getDataElements(x, y, data));
-            	int a = (rgb>>24)&255;
-    	        int r = (rgb>>16)&255;
-    	        int g = (rgb>>8)&255;
-    	        int b = (rgb)&255;
-                pixels[off++] = filter.accept(x, y, r, g, b, a).getRGB();
+            	int rgba[] = argb(colorModel.getRGB(raster.getDataElements(x, y, data)));
+                pixels[off++] = filter.accept(x, y, rgba[1], rgba[2], rgba[3], rgba[0]).getRGB();
             }
         }
 		
@@ -290,22 +344,35 @@ public final class ImageUtils {
 		return newImg;
 	}
 	
+	public static int[] argb(int rgba){
+		int a = (rgba>>24)&255;
+        int r = (rgba>>16)&255;
+        int g = (rgba>>8)&255;
+        int b = (rgba)&255;
+        return new int[]{a, r, g, b};
+	} 
+	
+	/** Accepts (R, G, B, A) | return = change in color **/
 	public static BufferedImage filter(BufferedImage img, PixelFilterRGB filter){
 		return filter(img, (x,y,r,g,b,a)->{return filter.accept(r, g, b);});
 	}
 	
+	/** Accepts (R, G, B, A) | return = change in color **/
 	public static BufferedImage filter(BufferedImage img, PixelFilterRGBA filter){
 		return filter(img, (x,y,r,g,b,a)->{return filter.accept(r, g, b, a);});
 	}
 	
+	/** Accepts (X, Y, R, G, B, A) | no return = no change in color **/
 	public static void filter(BufferedImage img, Pixel filter){
 		filter(img, (x,y,r,g,b,a)->{filter.accept(x, y, r, g, b, a); return Color.BLACK;});
 	}
 	
+	/** Accepts (R, G, B, A) | no return = no change in color **/
 	public static void filter(BufferedImage img, PixelRGBA filter){
 		filter(img, (x,y,r,g,b,a)->{filter.accept(r, g, b, a); return Color.BLACK;});
 	}
 	
+	/** Accepts (R, G, B) | no return = no change in color **/
 	public static void filter(BufferedImage img, PixelRGB filter){
 		filter(img, (x,y,r,g,b,a)->{filter.accept(r, g, b); return Color.BLACK;});
 	}

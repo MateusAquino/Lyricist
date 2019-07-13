@@ -92,7 +92,7 @@ public class Test {
 					new Translate(Position.MID_CENTER, SEGUNDO/2, SEGUNDO)
 				).BOTH));
 		
-		proj.preview(60, SEGUNDO*13/2);
+		proj.preview(60, SEGUNDO*4);
 
 		//proj.render(new File("C:\\Users\\Home\\Desktop\\Developer Folders\\Java\\IMAGERY LIB\\vid.mp4"),
 				//60, SEGUNDO*13/2);

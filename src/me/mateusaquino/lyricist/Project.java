@@ -37,6 +37,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Files;
 import java.util.LinkedList;
 
 import javax.imageio.ImageIO;
@@ -72,6 +73,7 @@ public final class Project {
 		this(Color.BLACK, width, height, 60, ffmpegFile);
 	}
 	
+	/** if background color = null, the frames will be rendered with opacity **/
 	public Project(Color background, int width, int height, int fps, File ffmpegFile) {
 		this.width = width;
 		this.height = height;
@@ -174,18 +176,26 @@ public final class Project {
 	File ffmpegFile;
 	
 	public void render(File output, int beginning, int end) throws IOException {
-		render(output, beginning, end, fps, false);
+		render(output, beginning, end, fps, "", false);
 	}
 	
 	public void render(File output, int beginning, int end, int speedFps) throws IOException {
-		render(output, beginning, end, speedFps, false);
+		render(output, beginning, end, speedFps, "",  false);
 	}
 
 	public void render(File output, int beginning, int end, boolean encodeOnly) throws IOException {
-		render(output, beginning, end, fps, false);
+		render(output, beginning, end, fps, "", encodeOnly);
 	}
 	
-	public void render(File output, int beginning, int end, int speedFps, boolean encodeOnly) throws IOException {
+	public void render(File output, int beginning, int end, String ffmpegArgs) throws IOException {
+		render(output, beginning, end, 60, ffmpegArgs, false);
+	}
+	
+	public void render(File output, int beginning, int end, String ffmpegArgs, boolean encodeOnly) throws IOException {
+		render(output, beginning, end, 60, ffmpegArgs, encodeOnly);
+	}
+	
+	public void render(File output, int beginning, int end, int speedFps, String ffmpegArgs, boolean encodeOnly) throws IOException {
 		double step = 60/(double)fps;
 		
 		if (!encodeOnly) {
@@ -219,9 +229,14 @@ public final class Project {
 		System.out.println("Encoding file...");
 		
 		String pts = (""+(60.0/(double)speedFps)).replace(",", ".");
-		String commands = "\"" + ffmpegFile + "\" -f image2 -i \""
+		String commands;
+		if (ffmpegArgs.isEmpty())
+			commands = "\"" + ffmpegFile + "\" -f image2 -i \""
 		        + renderFolder + "\\image_%6d.png\" -vcodec libx264 -filter:v \"setpts="+pts+"*PTS,fps=60\" \"" 
 				+ output + "\"";
+		else
+			commands = "\"" + ffmpegFile + "\" -f image2 -i \"" + renderFolder + "\\image_%6d.png\" " + ffmpegArgs
+			+ " \""+ output + "\"";
 		System.out.println(commands);
 		
 		boolean failed = false;
@@ -245,8 +260,10 @@ public final class Project {
 	public BufferedImage getFrame(int frameNumber, boolean printNum){
 		BufferedImage frame = ImageUtils.blank(width, height);
 		Graphics2D g2d = frame.createGraphics();
-		g2d.setColor(background);
-		g2d.fillRect(0, 0, width, height);
+		if (background!=null){
+			g2d.setColor(background);
+			g2d.fillRect(0, 0, width, height);
+		}
 		for (Track track : tracks)
 			g2d.drawImage(track.getFrame(width, height, frameNumber, track.getMargin()), 0, 0, null);
 
@@ -256,7 +273,7 @@ public final class Project {
 					"Frame: " + frameNumber,
 					Center.LEFT,
 					new Font("Helvetica", Font.PLAIN, 16),
-					Color.WHITE),
+					Color.RED),
 			0, 0, null);
 		
 		g2d.dispose();
@@ -271,5 +288,24 @@ public final class Project {
 		Track track = new Track(margin);
 		tracks.add(track);
 		return track;
+	}
+	
+	public void html5AlphaEncode() throws IOException {
+		File[] files = renderFolder.listFiles();
+		for (int i = 0; i < files.length; i++) {
+			System.out.println(i+"/"+files.length);
+			File f = files[i];
+			BufferedImage frame = ImageIO.read(f);
+			frame = ImageUtils.makeCopy(frame);
+			BufferedImage mask = ImageUtils.filter(frame, (r,g,b,a)->{return new Color(a,a,a);});
+			BufferedImage newFrame = ImageUtils.concat(ImageUtils.blank(width, 2*height), frame);
+			newFrame = ImageUtils.concat(newFrame, mask, 0, height);
+			ImageIO.write(newFrame, "png", f);
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 }

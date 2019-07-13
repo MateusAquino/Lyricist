@@ -34,22 +34,22 @@ import me.mateusaquino.lyricist.effects.Effect;
  */
 public final class SinEase extends Ease {
 	
-	public SinEase(Effect effect) {
-		super(effect);
+	public SinEase(Effect... effects) {
+		super(effects);
 	}
-
+	
 	@Override
 	public CubicBezier in() {
-		return cubicBezier(0.68, -0.55, 0.265, 1.55);
+		return cubicBezier(0.47, 0, 0.745, 0.715);
 	}
 
 	@Override
 	public CubicBezier out() {
-		return cubicBezier(0.68, -0.55, 0.265, 1.55);
+		return cubicBezier(0.39, 0.575, 0.565, 1);
 	}
 
 	@Override
 	public CubicBezier both() {
-		return cubicBezier(.87,-0.08,.3,1.2); // TODO: fix values 'cuz i was lazy, it's 00:43 already omg
+		return cubicBezier(0.445, 0.05, 0.55, 0.95);
 	}
 }

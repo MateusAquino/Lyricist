@@ -46,8 +46,13 @@ public final class Track {
 	private Margin margin;
 	private float opacity = 1;
 	private boolean debugRenders = false;
+	private int sx=0, sy=0, sw=-1, sh=-1;
 	
-	protected Track(Margin margin){
+	public Track(){
+		this.margin = new Margin(0,0,0,0);
+	}
+	
+	public Track(Margin margin){
 		this.margin = margin;
 	}
 
@@ -56,8 +61,14 @@ public final class Track {
 		return new Sequence(initialTime, toAdd, elements);
 	}
 	
-	public Track addElement(int start, int duration, Element element) {
+	public Track addElement(int start, int duration, Element element, Effect... effects) {
+		Effect[] oldEffects = element.getEffects();
+		Effect[] newEffects = new Effect[effects.length + oldEffects.length];
+		System.arraycopy(effects, 0, newEffects, 0, effects.length);
+		System.arraycopy(oldEffects, 0, newEffects, effects.length, oldEffects.length);
+		element.setEffects(newEffects);
 		elements.add(build(start, start+duration, element));
+		
 		return this;
 	}
 	
@@ -87,7 +98,7 @@ public final class Track {
 		BufferedImage frame = ImageUtils.blank(width, height);
 		Graphics2D frame_g2d = frame.createGraphics();
 		for (TimedElement elem : elements){
-			if (frameNumber>elem.start() && frameNumber<=elem.end()) {
+			if (frameNumber>=elem.start() && frameNumber<=elem.end()) {
 				Element e = elem.element();
 				BufferedImage render = e.getRender(width, height, elem.start(), frameNumber, elem.end());
 
@@ -103,7 +114,6 @@ public final class Track {
 				for (Effect filter : e.getEffects())
 						filter.apply(values);
 				
-				
 				render = values.frame();
 				x = values.x();
 				y = values.y();
@@ -114,9 +124,51 @@ public final class Track {
 			}
 		}
 		frame_g2d.dispose();
+		
+				
+		// Create event values
+		ApplyEffectEvent values = 
+				ApplyEffectEvent.initiate(frame, 0, 0, build(0, Integer.MAX_VALUE, null), 
+						frameNumber, width, height, margin);
+		
+		// Apply Global Effects
+		for (TimedElement filters : gEffects)
+			if (frameNumber>=filters.start && frameNumber<=filters.end)
+				for (Effect filter : filters.element().getEffects())
+					filter.apply(values);
+		
+		frame = values.frame();
+		
+		// Apply new dimensions
+				boolean hasChanges = !(sx==0 && sy==0 && sw == -1 && sh == -1);
+				if (hasChanges) 
+					frame = ImageUtils.resizepos(frame, sx, sy, sw==-1 ? frame.getWidth():sw, sh==-1 ? frame.getHeight():sh);
+		
+		for (Track t : toSubtract)
+			frame = ImageUtils.subtract(frame, t.getFrame(width, height, frameNumber, t.margin));
 		return (opacity==1) ? frame : ImageUtils.opacity(frame, opacity);
 	}
 	
+	LinkedList<Track> toSubtract = new LinkedList<Track>();
+	public Track subtractAlpha(Track trackToSubtract){
+		toSubtract.add(trackToSubtract);
+		return this;
+	}
+	
+	LinkedList<TimedElement> gEffects = new LinkedList<TimedElement>();
+	public void addGlobalEffects(Effect... effects){
+		addGlobalEffects(0, Integer.MAX_VALUE, effects);
+	}
+	
+	public void addGlobalEffects(int start, int end, Effect... globalEffects){
+		gEffects.add(build(start, end, new Element() {
+			Effect[] effects = globalEffects;
+			@Override public BufferedImage getRender(int screenWidth, int screenHeight, int start, int current, int end) {return null;}			
+			@Override public Position getPosition() {return null;}
+			@Override public Effect[] getEffects() {return effects;}
+			@Override public void setEffects(Effect... effects) {this.effects = effects;}
+		}));
+	}
 	
 	public Margin getMargin() {
 		return margin;
@@ -125,6 +177,23 @@ public final class Track {
 	public void setMargin(Margin margin){
 		this.margin = margin;
 	}
+	
+	public void setX(int x){
+		sx = x;
+	}
+	
+	public void setY(int y){
+		sy = y;
+	}
+	
+	public void setWidth(int width){
+		sw = width;
+	}
+	
+	public void setHeight(int height){
+		sh = height;
+	}
+	
 	
 	
 	/************ UTILITIES ************/

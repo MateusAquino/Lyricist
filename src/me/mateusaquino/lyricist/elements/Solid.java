@@ -65,12 +65,17 @@ public final class Solid implements Element {
 	
 	@Override
 	public Position getPosition() {
-		return Position.MID_CENTER;
+		return Position.TOP_LEFT;
 	}
 
 	@Override
 	public Effect[] getEffects() {
 		return effects;
+	}
+	
+	@Override
+	public void setEffects(Effect... effects) {
+		this.effects = effects;
 	}
 
 	@Override

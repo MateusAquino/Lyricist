@@ -22,23 +22,27 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.*/
 
-package me.mateusaquino.lyricist.elements;
+package me.mateusaquino.lyricist.effects;
 
-import java.awt.image.BufferedImage;
+import java.awt.image.BufferedImageOp;
 
-import me.mateusaquino.lyricist.Position;
-import me.mateusaquino.lyricist.effects.Effect;
+import me.mateusaquino.lyricist.ApplyEffectEvent;
 
 /**
- * Element skeleton
- * <br> You can see examples on the package: me.mateusakino.lyricist.elements
+ * Apply filters from jhlabs
  * 
  * @author Mateus de Aquino Batista
- * @category Main Elements
+ * @category Effects
  */
-public interface Element {
-	Position getPosition();
-	Effect[] getEffects();
-	void setEffects(Effect... effects);
-	BufferedImage getRender(int screenWidth, int screenHeight, int start, int current, int end);
+public class Filter implements Effect {
+
+	private BufferedImageOp filter;
+	public Filter(BufferedImageOp filter){
+		this.filter = filter;
+	}
+	
+	@Override
+	public void apply(ApplyEffectEvent event) {
+		event.setFrame(filter.filter(event.frame(), null));
+	}
 }
